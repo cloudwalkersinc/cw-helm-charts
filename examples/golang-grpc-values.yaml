@@ -1,0 +1,87 @@
+# Example values for Golang gRPC application
+replicaCount: 2
+
+image:
+  repository: cloudwalkersinc/my-grpc-service
+  pullPolicy: IfNotPresent
+  tag: "v1.5.2"
+
+service:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP  # Health check endpoint
+    - name: metrics
+      port: 9091
+      targetPort: 9091
+      protocol: TCP
+
+env:
+  - name: GRPC_PORT
+    value: "9090"
+  - name: HTTP_PORT
+    value: "8080"
+  - name: METRICS_PORT
+    value: "9091"
+  - name: LOG_FORMAT
+    value: "json"
+
+envFrom:
+  - configMapRef:
+      name: grpc-config
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 15
+  targetCPUUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180  # Wait 3min before scaling down
+      policies:
+      - type: Pods
+        value: 2  # Remove max 2 pods per minute
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 30  # Quick assessment (Go is fast)
+      policies:
+      - type: Percent
+        value: 50  # Add 50% more pods
+        periodSeconds: 60
+      - type: Pods
+        value: 3  # Or add 3 pods
+        periodSeconds: 60
+      selectPolicy: Max

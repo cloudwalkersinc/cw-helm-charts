@@ -1,0 +1,158 @@
+# Backstage Metadata Injection Example
+
+# This example values file demonstrates how Backstage metadata is injected
+# into the Helm chart deployment. These values would typically be set by
+# the ArgoCD ApplicationSet based on Backstage API data.
+
+# Application identity
+fullnameOverride: payment-processor
+
+# Namespace is derived from Backstage productName
+namespaceOverride: payments-platform
+
+# Backstage metadata labels - injected to all Kubernetes resources
+metadata:
+  labels:
+    # Product and ownership
+    backstage.io/product-name: "payments-platform"
+    backstage.io/team: "platform-engineering"
+    backstage.io/owner: "platform-team@cloudwalkersinc.com"
+    backstage.io/cost-center: "TECH-001"
+    
+    # Application details
+    backstage.io/application-type: "java-spring-boot"
+    backstage.io/lifecycle: "production"
+    
+    # Environment classification
+    app.kubernetes.io/environment: "prod"
+    
+    # Compliance tags
+    compliance.cloudwalkersinc.com/pci-dss: "true"
+    compliance.cloudwalkersinc.com/data-classification: "confidential"
+
+# Standard Helm values (same as before)
+replicaCount: 3
+
+image:
+  repository: cloudwalkersinc/payment-processor
+  tag: "v1.2.3"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: actuator
+      port: 8081
+      targetPort: 8081
+      protocol: TCP
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: payments.cloudwalkersinc.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: payments-tls
+      hosts:
+        - payments.cloudwalkersinc.com
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Health probes for Java Spring Boot
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: actuator
+  initialDelaySeconds: 90
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: actuator
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /actuator/health
+    port: actuator
+  periodSeconds: 10
+  failureThreshold: 30
+
+# Environment variables from Backstage metadata
+env:
+  - name: PRODUCT_NAME
+    value: "payments-platform"
+  - name: TEAM
+    value: "platform-engineering"
+  - name: ENVIRONMENT
+    value: "production"
+
+# Environment variables from Secrets/ConfigMaps
+envFrom:
+  - configMapRef:
+      name: payments-config
+  - secretRef:
+      name: payments-secrets
+
+# ---
+# Expected Kubernetes Deployment Output (simplified)
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: payment-processor
+#   namespace: payments-platform
+#   labels:
+#     # Standard Helm labels
+#     app.kubernetes.io/name: paved-road-service
+#     app.kubernetes.io/instance: payment-processor
+#     app.kubernetes.io/version: "v1.2.3"
+#     app.kubernetes.io/managed-by: Helm
+#     
+#     # Backstage metadata labels (injected)
+#     backstage.io/product-name: "payments-platform"
+#     backstage.io/team: "platform-engineering"
+#     backstage.io/owner: "platform-team@cloudwalkersinc.com"
+#     backstage.io/cost-center: "TECH-001"
+#     backstage.io/application-type: "java-spring-boot"
+#     backstage.io/lifecycle: "production"
+#     app.kubernetes.io/environment: "prod"
+#     compliance.cloudwalkersinc.com/pci-dss: "true"
+#     compliance.cloudwalkersinc.com/data-classification: "confidential"
+# spec:
+#   template:
+#     metadata:
+#       labels:
+#         # Selector labels
+#         app.kubernetes.io/name: paved-road-service
+#         app.kubernetes.io/instance: payment-processor
+#         
+#         # Backstage metadata labels (also on pods)
+#         backstage.io/product-name: "payments-platform"
+#         backstage.io/team: "platform-engineering"
+#         backstage.io/cost-center: "TECH-001"
+#         # ... all other metadata labels

@@ -1,0 +1,84 @@
+# Example values for a service with HTTPS support
+replicaCount: 2
+
+image:
+  repository: cloudwalkersinc/my-secure-service
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: https
+      port: 8443
+      targetPort: 8443
+      protocol: TCP
+
+env:
+  - name: HTTP_PORT
+    value: "8080"
+  - name: HTTPS_PORT
+    value: "8443"
+  - name: TLS_CERT_PATH
+    value: "/etc/tls/certs/tls.crt"
+  - name: TLS_KEY_PATH
+    value: "/etc/tls/certs/tls.key"
+
+# Mount TLS certificates from a Secret
+volumes:
+  - name: tls-certs
+    secret:
+      secretName: app-tls-certs
+
+volumeMounts:
+  - name: tls-certs
+    mountPath: /etc/tls/certs
+    readOnly: true
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: secure.cloudwalkersinc.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: secure-app-tls
+      hosts:
+        - secure.cloudwalkersinc.com

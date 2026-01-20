@@ -1,0 +1,92 @@
+# Example values for Python FastAPI application
+replicaCount: 2
+
+image:
+  repository: cloudwalkersinc/my-fastapi-app
+  pullPolicy: IfNotPresent
+  tag: "0.5.0"
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+env:
+  - name: WORKERS
+    value: "4"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: postgres-credentials
+        key: connection-string
+  - name: REDIS_URL
+    valueFrom:
+      configMapKeyRef:
+        name: cache-config
+        key: redis-url
+
+initContainers:
+  - name: db-migration
+    image: cloudwalkersinc/my-fastapi-app:0.5.0
+    command: ['python', '-m', 'alembic', 'upgrade', 'head']
+    env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: postgres-credentials
+            key: connection-string
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5min (conservative for Python)
+      policies:
+      - type: Pods
+        value: 1  # Remove 1 pod at a time
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 45  # Brief stabilization
+      policies:
+      - type: Percent
+        value: 75  # Add 75% more pods
+        periodSeconds: 60
+      - type: Pods
+        value: 2  # Or add 2 pods
+        periodSeconds: 60
+      selectPolicy: Max

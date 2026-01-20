@@ -1,0 +1,82 @@
+# Example values for Node.js Express application
+replicaCount: 3
+
+image:
+  repository: cloudwalkersinc/my-nodejs-app
+  pullPolicy: IfNotPresent
+  tag: "2.1.0"
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: PORT
+    value: "3000"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: api-secrets
+        key: api-key
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 75
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 120  # Wait 2min before scaling down
+      policies:
+      - type: Pods
+        value: 2  # Remove max 2 pods
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Scale up immediately (Node.js starts fast)
+      policies:
+      - type: Percent
+        value: 100  # Double the pods
+        periodSeconds: 30
+      - type: Pods
+        value: 4  # Or add 4 pods
+        periodSeconds: 30
+      selectPolicy: Max  # Aggressive scaling for traffic spikes

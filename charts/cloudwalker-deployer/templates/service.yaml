@@ -1,15 +1,27 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "cloudwalker-deployer.fullname" . }}
+  name: {{ include "paved-road-service.fullname" . }}
   labels:
-    {{- include "cloudwalker-deployer.labels" . | nindent 4 }}
+    {{- include "paved-road-service.labels" . | nindent 4 }}
+    {{- with .Values.metadata.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
+    {{- if .Values.service.ports }}
+    {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol | default "TCP" }}
+      name: {{ .name }}
+    {{- end }}
+    {{- else }}
     - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
       name: http
+    {{- end }}
   selector:
-    {{- include "cloudwalker-deployer.selectorLabels" . | nindent 4 }}
+    {{- include "paved-road-service.selectorLabels" . | nindent 4 }}
