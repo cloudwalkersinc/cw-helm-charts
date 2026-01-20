@@ -11,4 +11,15 @@ entries:
     urls:
     - https://github.com/cloudwalkers/cw-helm-charts/releases/download/cloudwalker-deployer-0.1.0/cloudwalker-deployer-0.1.0.tgz
     version: 0.1.0
-generated: "2022-09-16T20:06:43.980983454Z"
+  paved-road-service:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2026-01-20T02:35:32.697335138Z"
+    description: A Helm chart for Kubernetes
+    digest: 8a0346dd5dc3613fd0bae0f547a775d06a009ecc18d9d221419232865aaeb6f7
+    name: paved-road-service
+    type: application
+    urls:
+    - https://github.com/cloudwalkersinc/cw-helm-charts/releases/download/paved-road-service-0.1.0/paved-road-service-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-01-20T02:35:32.697343884Z"
