@@ -1,4 +1,4 @@
-# Paved Road Service Helm Chart
+# Service Helm Chart
 
 A flexible, production-ready Helm chart for deploying containerized applications to Kubernetes. Supports Java, Node.js, Golang, Python, and React applications with HTTP, HTTPS, and gRPC protocols.
 
